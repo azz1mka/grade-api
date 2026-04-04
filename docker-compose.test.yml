@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db_test:
+    image: postgres:15-alpine
+    container_name: grade_db_test
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test:
+    build: .
+    container_name: grade_api_test
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - TEST_DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db_test:5432/${DB_NAME}_test
+      - UPLOAD_FOLDER=uploads
+      - PGPASSWORD=${DB_PASSWORD}
+      - DB_USER=${DB_USER}
+      - DB_NAME=${DB_NAME}_test
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./app:/app/app:ro
+      - ./migrations:/app/migrations:ro
+    depends_on:
+      db_test:
+        condition: service_healthy
+    entrypoint: []
+    command: ["sh", "-c", "psql -h db_test -U $DB_USER -d ${DB_NAME}_test -f /app/migrations/init.sql && pytest tests/ -v --tb=short"]
