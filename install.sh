@@ -7,69 +7,64 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${YELLOW}Установка...${NC}"
-echo "════════════════════════════════════"
+printf "${YELLOW}Установка...${NC}\n"
+printf "════════════════════════════════════\n"
 
-echo "Проверка зависимостей..."
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}Docker не установлен!${NC}"
-    echo "   Установите: https://docs.docker.com/get-docker/"
+printf "Проверка зависимостей...\n"
+
+if ! command -v docker > /dev/null 2>&1; then
+    printf "${RED}Docker не установлен!${NC}\n"
+    printf "   Установите: https://docs.docker.com/get-docker/\n"
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo -e "${RED}Docker Compose не установлен!${NC}"
-    echo "   Установите: https://docs.docker.com/compose/install/"
+if ! command -v docker-compose > /dev/null 2>&1 && ! docker compose version > /dev/null 2>&1; then
+    printf "${RED}Docker Compose не установлен!${NC}\n"
+    printf "   Установите: https://docs.docker.com/compose/install/\n"
     exit 1
 fi
-echo -e "${GREEN}Зависимости установлены${NC}"
+printf "${GREEN}Зависимости установлены${NC}\n"
 
-if docker compose version &> /dev/null; then
+if docker compose version > /dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 else
     DOCKER_COMPOSE="docker-compose"
 fi
 
-REPO_URL = "https://raw.githubusercontent.com/azz1mka/grade-api/refs/heads/main/install.sh"
-PROJECT_DIR = "grade_api"
+
+REPO_URL="https://github.com/azz1mka/grade-api.git"
+PROJECT_DIR="grade-api"
 
 if [ ! -f "docker-compose.prod.yml" ]; then
-    echo "Клонирование репозитория..."
+    printf "Клонирование репозитория...\n"
 
     if [ -d "$PROJECT_DIR" ]; then
-        echo "Папка $PROJECT_DIR уже существует. Удаляем..."
+        printf "Папка $PROJECT_DIR уже существует. Удаляем...\n"
         rm -rf "$PROJECT_DIR"
     fi
 
     git clone "$REPO_URL" "$PROJECT_DIR"
     cd "$PROJECT_DIR"
-    echo -e "${GREEN}Репозиторий клонирован${NC}"
+    printf "${GREEN}Репозиторий клонирован${NC}\n"
 else
-    echo -e "${GREEN}Файлы проекта уже на месте${NC}"
+    printf "${GREEN}Файлы проекта уже на месте${NC}\n"
 fi
 
 if [ ! -f ".env" ]; then
-    echo "Создание конфигурации..."
+    printf "  Создание конфигурации...\n"
     if [ -f ".env.example" ]; then
         cp .env.example .env
-        echo -e "${YELLOW}Файл .env создан из .env.example${NC}"
-        echo -e "${YELLOW}   При необходимости отредактируйте пароли:${NC}"
-        echo "   nano .env"
-        echo ""
-        read -p "Продолжить установку? [Y/n] " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Установка отменена"
-            exit 0
+        printf "${YELLOW}Файл .env создан из .env.example${NC}\n"
+        printf "${YELLOW}При необходимости отредактируйте пароли:${NC}\n"
         fi
     else
-        echo -e "${RED}.env.example не найден!${NC}"
+        printf "${RED}.env.example не найден!${NC}\n"
         exit 1
     fi
 else
-    echo -e "${GREEN}.env уже существует${NC}"
+    printf "${GREEN}.env уже существует${NC}\n"
 fi
 
-echo -e "\n${YELLOW}Запуск тестов и продакшена...${NC}"
+printf "\n${YELLOW}Запуск тестов и продакшена...${NC}\n"
 chmod +x deploy.sh
 ./deploy.sh
