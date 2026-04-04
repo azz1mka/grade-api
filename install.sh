@@ -55,7 +55,6 @@ if [ ! -f ".env" ]; then
         cp .env.example .env
         printf "${YELLOW}Файл .env создан из .env.example${NC}\n"
         printf "${YELLOW}   При необходимости отредактируйте пароли:${NC}\n"
-        fi
     else
         printf "${RED}.env.example не найден!${NC}\n"
         exit 1
