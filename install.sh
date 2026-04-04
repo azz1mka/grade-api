@@ -31,7 +31,6 @@ else
     DOCKER_COMPOSE="docker-compose"
 fi
 
-
 REPO_URL="https://github.com/azz1mka/grade-api.git"
 PROJECT_DIR="grade-api"
 
@@ -51,12 +50,12 @@ else
 fi
 
 if [ ! -f ".env" ]; then
-    printf "  Создание конфигурации...\n"
+    printf "Создание конфигурации...\n"
     if [ -f ".env.example" ]; then
         cp .env.example .env
         printf "${YELLOW}Файл .env создан из .env.example${NC}\n"
-        printf "${YELLOW}При необходимости отредактируйте пароли:${NC}\n"
-            fi
+        printf "${YELLOW}   При необходимости отредактируйте пароли:${NC}\n"
+        fi
     else
         printf "${RED}.env.example не найден!${NC}\n"
         exit 1
