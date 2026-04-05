@@ -34,6 +34,22 @@ sh <(wget -O - https://raw.githubusercontent.com/azz1mka/grade-api/main/install.
 git clone https://github.com/azz1mka/grade-api.git
 cd grade-api
 ```
+Конфигурация с данными для доступа к БД создается автоматически (.env файл), можно отредактировать:
+```
+DATABASE_URL=postgresql://postgres:secret@localhost:5432/grades_db
+
+TEST_DATABASE_URL=postgresql://postgres:secret@localhost:5432/grades_db_test
+
+DEBUG=True
+UPLOAD_FOLDER=uploads
+DB_USER=postgres
+DB_PASSWORD=secret
+```
+#### Запустите проект 
+```
+chmod +x deploy.sh
+./deploy.sh
+```
 ### Запуск, если скрипты не работают
 Если `instal.sh` или `deploy.sh` не сработали, можно запустить проект вручную
 #### Клонируйте репозиторий
@@ -54,23 +70,6 @@ docker-compose -f docker-compose.test.yml down -v
 #### Запуск проекта
 ```
 docker-compose -f docker-compose up --build -d
-```
-
-Конфигурация с данными для доступа к БД создается автоматически (.env файл), можно отредактировать:
-```
-DATABASE_URL=postgresql://postgres:secret@localhost:5432/grades_db
-
-TEST_DATABASE_URL=postgresql://postgres:secret@localhost:5432/grades_db_test
-
-DEBUG=True
-UPLOAD_FOLDER=uploads
-DB_USER=postgres
-DB_PASSWORD=secret
-```
-#### Запустите проект 
-```
-chmod +x deploy.sh
-./deploy.sh
 ```
 Сервис будет доступен по адресу 
 ```
