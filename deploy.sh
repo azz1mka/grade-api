@@ -6,6 +6,17 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Определяем, какую команду использовать (V2 или V1)
+if docker compose version > /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose > /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo -e "${RED}Docker Compose не найден!${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Используется: $DOCKER_COMPOSE${NC}"
+
 if [ ! -f ".env" ]; then
     echo -e "${YELLOW}Файл .env не найден. Создаём из .env.example...${NC}"
     if [ -f ".env.example" ]; then
@@ -14,7 +25,6 @@ if [ ! -f ".env" ]; then
         echo -e "${YELLOW}При необходимости отредактируйте пароли в .env${NC}"
     else
         echo -e "${RED}.env.example не найден!${NC}"
-        echo " Используется .env.example"
         exit 1
     fi
 else
@@ -28,37 +38,37 @@ echo "════════════════════════�
 echo -e "\n${YELLOW}Этап 1: Запуск тестов${NC}"
 echo "────────────────────────────────────"
 
-if docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test; then
+if $DOCKER_COMPOSE -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test; then
     echo -e "${GREEN}Все тесты прошли успешно!${NC}"
 else
     echo -e "${RED}Тесты не прошли! Деплой отменён.${NC}"
     echo -e "${YELLOW}Очистка тестовых контейнеров...${NC}"
-    docker-compose -f docker-compose.test.yml down -v
+    $DOCKER_COMPOSE -f docker-compose.test.yml down -v
     exit 1
 fi
 
 echo -e "\n${YELLOW}Этап 2: Очистка тестового окружения${NC}"
 echo "────────────────────────────────────"
-docker-compose -f docker-compose.test.yml down -v
+$DOCKER_COMPOSE -f docker-compose.test.yml down -v
 echo -e "${GREEN}Тестовые контейнеры удалены${NC}"
 
-echo -e "\n${YELLOW}Этап 3: Запуск${NC}"
+echo -e "\n${YELLOW}Этап 3: Запуск продакшена${NC}"
 echo "────────────────────────────────────"
 
-
-if docker-compose -f docker-compose.yml ps -q | grep -q .; then
+# Проверяем, запущены ли уже контейнеры
+if $DOCKER_COMPOSE -f docker-compose.yml ps -q | grep -q .; then
     echo -e "${YELLOW}Уже запущено. Перезапускаем...${NC}"
-    docker-compose -f docker-compose.yml down
+    $DOCKER_COMPOSE -f docker-compose.yml down
 fi
 
-docker-compose -f docker-compose.yml up --build -d
+$DOCKER_COMPOSE -f docker-compose.yml up --build -d
 
 echo -e "\n${YELLOW}Этап 4: Проверка здоровья сервисов${NC}"
 echo "────────────────────────────────────"
 
 echo "Ожидание готовности БД..."
 for i in {1..30}; do
-    if docker-compose -f docker-compose.yml ps db | grep -q "healthy"; then
+    if $DOCKER_COMPOSE -f docker-compose.yml ps db | grep -q "healthy"; then
         echo -e "${GREEN}БД готова${NC}"
         break
     fi
@@ -79,10 +89,10 @@ echo -e "${GREEN}Деплой завершён успешно!${NC}"
 echo -e "${GREEN}════════════════════════════════════${NC}"
 echo ""
 echo "Статус сервисов:"
-docker-compose -f docker-compose.yml ps
+$DOCKER_COMPOSE -f docker-compose.yml ps
 echo ""
 echo "Приложение доступно: http://localhost:8000"
 echo "Документация API: http://localhost:8000/docs"
 echo ""
-echo "Логи: docker-compose -f docker-compose.yml logs -f"
-echo "Остановка: docker-compose -f docker-compose.yml down"
+echo "Логи: $DOCKER_COMPOSE -f docker-compose.yml logs -f"
+echo "Остановка: $DOCKER_COMPOSE -f docker-compose.yml down"

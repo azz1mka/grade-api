@@ -12,30 +12,32 @@ printf "════════════════════════
 
 printf "Проверка зависимостей...\n"
 
+# Проверка Docker
 if ! command -v docker > /dev/null 2>&1; then
     printf "${YELLOW}Docker не установлен! Начинаем автоматическую установку...${NC}\n"
     sudo curl -fsSL https://get.docker.com | sh
     printf "${GREEN}Docker успешно установлен!${NC}\n"
 fi
 
-
-if ! command -v docker-compose > /dev/null 2>&1 && ! docker compose version > /dev/null 2>&1; then
+# Проверка Docker Compose (V2 или V1)
+if docker compose version > /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose > /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker-compose"
+else
     printf "${RED}Docker Compose не установлен!${NC}\n"
     printf "   Установите: https://docs.docker.com/compose/install/\n"
     exit 1
 fi
-printf "${GREEN}Зависимости установлены${NC}\n"
+printf "${GREEN}Docker Compose найден: $DOCKER_COMPOSE${NC}\n"
 
-if docker compose version > /dev/null 2>&1; then
-    DOCKER_COMPOSE="docker compose"
-else
-    DOCKER_COMPOSE="docker-compose"
-fi
+# Экспортируем переменную, чтобы deploy.sh её увидел
+export DOCKER_COMPOSE
 
 REPO_URL="https://github.com/azz1mka/grade-api.git"
 PROJECT_DIR="grade-api"
 
-if [ ! -f "docker-compose.prod.yml" ]; then
+if [ ! -f "docker-compose.yml" ]; then
     printf "Клонирование репозитория...\n"
 
     if [ -d "$PROJECT_DIR" ]; then
@@ -55,7 +57,7 @@ if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         cp .env.example .env
         printf "${YELLOW}Файл .env создан из .env.example${NC}\n"
-        printf "${YELLOW}   При необходимости отредактируйте пароли:${NC}\n"
+        printf "${YELLOW}   При необходимости отредактируйте пароли в .env${NC}\n"
     else
         printf "${RED}.env.example не найден!${NC}\n"
         exit 1
