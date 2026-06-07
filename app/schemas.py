@@ -1,12 +1,21 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+import re
 
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    email: EmailStr
+    email: str  # ← Обычный str вместо EmailStr
     password: str = Field(..., min_length=6)
     role: str = Field(default="user", pattern="^(admin|user)$")
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v):
+            raise ValueError('Неверный формат email')
+        return v.lower()
 
 
 class UserResponse(BaseModel):
