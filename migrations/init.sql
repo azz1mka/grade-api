@@ -12,3 +12,6 @@ CREATE TABLE IF NOT EXISTS grades (
     student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     grade INTEGER NOT NULL CHECK (grade >= 1 AND grade <= 5)
 );
+
+CREATE INDEX IF NOT EXISTS idx_grades_student_grade
+ON grades(student_id, grade);

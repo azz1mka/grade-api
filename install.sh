@@ -12,13 +12,12 @@ printf "════════════════════════
 
 printf "Проверка зависимостей...\n"
 
-# === ИЗМЕНЕННЫЙ БЛОК ===
 if ! command -v docker > /dev/null 2>&1; then
     printf "${YELLOW}Docker не установлен! Начинаем автоматическую установку...${NC}\n"
     sudo curl -fsSL https://get.docker.com | sh
     printf "${GREEN}Docker успешно установлен!${NC}\n"
 fi
-# =======================
+
 
 if ! command -v docker-compose > /dev/null 2>&1 && ! docker compose version > /dev/null 2>&1; then
     printf "${RED}Docker Compose не установлен!${NC}\n"
