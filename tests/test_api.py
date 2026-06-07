@@ -5,7 +5,7 @@ async def upload_csv(client, csv_content: str, token: str = None):
     files = {"file": ("test.csv", csv_content, "text/csv")}
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     response = await client.post("/upload-grades", files=files, headers=headers)
-    return response
+    return response.json()
 
 
 # тесты аутентификации!
