@@ -1,4 +1,48 @@
+# Добавьте в начало test_api.py
 import pytest
+
+async def upload_csv(client, csv_content: str, token: str):
+    files = {"file": ("test.csv", csv_content, "text/csv")}
+    headers = {"Authorization": f"Bearer {token}"}
+    response = await client.post("/upload-grades", files=files, headers=headers)
+    return response
+
+
+@pytest.mark.asyncio
+async def test_upload_without_auth(client):
+    """Тест: загрузка без токена должна быть отклонена"""
+    csv_content = """Дата;Номер группы;ФИО;Оценка
+01.04.2025;ФФ105;Семен Крутой;3"""
+    files = {"file": ("test.csv", csv_content, "text/csv")}
+    response = await client.post("/upload-grades", files=files)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_upload_as_user_forbidden(client, user_token):
+    """Тест: обычный user не может загружать файлы"""
+    csv_content = """Дата;Номер группы;ФИО;Оценка
+01.04.2025;ФФ105;Семен Крутой;3"""
+    response = await upload_csv(client, csv_content, user_token)
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_upload_as_admin_success(client, admin_token):
+    """Тест: admin может загружать файлы"""
+    csv_content = """Дата;Номер группы;ФИО;Оценка
+01.04.2025;ФФ105;Семен Крутой;3"""
+    response = await upload_csv(client, csv_content, admin_token)
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_get_students_with_auth(client, admin_token):
+    """Тест: авторизованный пользователь может получать студентов"""
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    response = await client.get("/students/more-than-3-twos", headers=headers)
+    assert response.status_code == 200
 
 async def upload_csv(client, csv_content: str):
     files = {"file": ("test.csv", csv_content, "text/csv")}

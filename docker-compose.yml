@@ -8,6 +8,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - UPLOAD_FOLDER=${UPLOAD_FOLDER}
+      - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./uploads:/app/uploads
     depends_on:
