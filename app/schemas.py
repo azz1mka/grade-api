@@ -7,7 +7,6 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: str  # ← Обычный str вместо EmailStr
     password: str = Field(..., min_length=6)
-    role: str = Field(default="user", pattern="^(admin|user)$")
 
     @field_validator('email')
     @classmethod

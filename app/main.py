@@ -53,22 +53,22 @@ async def register(user: UserCreate):
                 detail="Пользователь с таким username или email уже существует"
             )
 
-        # Создание пользователя
+        # Создание пользователя — ВСЕГДА role = 'user'
         hashed_password = get_password_hash(user.password)
         user_id = await conn.fetchval(
             """
             INSERT INTO users (username, email, hashed_password, role)
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3, 'user')
             RETURNING id
             """,
-            user.username, user.email, hashed_password, user.role
+            user.username, user.email, hashed_password
         )
 
         return {
             "id": user_id,
             "username": user.username,
             "email": user.email,
-            "role": user.role,
+            "role": "user",
             "is_active": True
         }
 
