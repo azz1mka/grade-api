@@ -19,7 +19,7 @@ STUDENTS_MORE_THAN_3_TWOS = """
     FROM students s 
     JOIN grades g ON s.id = g.student_id
     GROUP BY s.id, s.full_name
-    HAVING count_twos > 3
+    HAVING COUNT(*) FILTER (WHERE g.grade = 2) > 3
     ORDER BY count_twos DESC;
 """
 
@@ -30,6 +30,6 @@ STUDENTS_LESS_THAN_5_TWOS = """
     FROM students s 
     JOIN grades g ON s.id = g.student_id
     GROUP BY s.id, s.full_name
-    HAVING count_twos < 5
+    HAVING COUNT(*) FILTER (WHERE g.grade = 2) < 5
     ORDER BY count_twos DESC;
 """
