@@ -37,12 +37,3 @@ ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email
 ON users(email);
 
-INSERT INTO users (username, email, hashed_password, role, is_active)
-VALUES (
-    'andrey',
-    'admin@grade-api.local',
-    '$2b$12$U.Zhn45orWY38MItsQeFrOXwH3M0.9TMu8WG/r8P7OKNg4ADy6Vyy',
-    'admin',
-    true
-)
-ON CONFLICT (username) DO NOTHING;
