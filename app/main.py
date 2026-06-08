@@ -59,6 +59,16 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Добавляет security headers для защиты от clickjacking и MIME-sniffing"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 # Раздача статики
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
