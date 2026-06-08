@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, status
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import uvicorn
 import io
 import csv
@@ -35,8 +37,10 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Анализ оценок", lifespan=lifespan)
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ============ АУТЕНТИФИКАЦИЯ ============
+
+
 
 @app.post("/auth/register", response_model=UserResponse, summary="Регистрация нового пользователя")
 async def register(user: UserCreate):
@@ -64,13 +68,13 @@ async def register(user: UserCreate):
             user.username, user.email, hashed_password
         )
 
-        return {
-            "id": user_id,
-            "username": user.username,
-            "email": user.email,
-            "role": "user",
-            "is_active": True
-        }
+    return {
+        "id": user_id,
+        "username": user.username,
+        "email": user.email,
+        "role": "user",
+        "is_active": True
+    }
 
 
 @app.post("/auth/login", response_model=Token, summary="Получение JWT токена")
@@ -96,7 +100,7 @@ async def login(username: str, password: str):
             )
 
         access_token = create_access_token(data={"sub": user['username']})
-        return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.get("/auth/me", response_model=UserResponse, summary="Получить информацию о текущем пользователе")
@@ -106,9 +110,9 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 # ============ ЗАЩИЩЕННЫЕ ЭНДПОИНТЫ ============
 
-@app.get("/", summary="Проверка доступности")
-async def root(current_user: dict = Depends(get_current_user)):
-    return {"message": f"Service is running. Welcome, {current_user['username']}!"}
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
 
 
 @app.post(
@@ -243,7 +247,7 @@ async def upload_grades(
     "/students/more-than-3-twos",
     summary="Студенты с >3 двоек (доступно всем авторизованным)"
 )
-async def more_than_3_twos(current_user: dict = Depends(get_current_user)):
+async def more_than_3_twos(_: dict = Depends(get_current_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(STUDENTS_MORE_THAN_3_TWOS)
@@ -254,7 +258,7 @@ async def more_than_3_twos(current_user: dict = Depends(get_current_user)):
     "/students/less-than-5-twos",
     summary="Студенты с <5 двоек (доступно всем авторизованным)"
 )
-async def less_than_5_twos(current_user: dict = Depends(get_current_user)):
+async def less_than_5_twos(_: dict = Depends(get_current_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(STUDENTS_LESS_THAN_5_TWOS)
