@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, status
+from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
 import io
 import csv
 import os
+import re
 import uuid
 from datetime import datetime
 from app.db import get_pool, close_pool
@@ -21,8 +22,13 @@ from app.auth import (
     get_current_user,
     require_role
 )
-from app.schemas import UserCreate, UserResponse, Token
+from app.schemas import UserCreate, UserResponse, Token, LoginRequest
+from app.logger import logger  # ← ИМПОРТ ЛОГГЕРА
 from contextlib import asynccontextmanager
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi.responses import JSONResponse
 
 UPLOAD_FOLDER = 'uploads'
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 МБ
@@ -31,33 +37,52 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    logger.info("🚀 Приложение запускается...")
     yield
+    logger.info("🛑 Приложение останавливается...")
     await close_pool()
 
 
 app = FastAPI(title="Анализ оценок", lifespan=lifespan)
 
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    client_ip = get_remote_address(request)
+    logger.warning(f"⚠️ Rate limit превышен: ip={client_ip}, detail={exc.detail}")
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"Превышен лимит запросов: {exc.detail}"}
+    )
+
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+# Раздача статики
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-
+# ============ АУТЕНТИФИКАЦИЯ ============
 
 @app.post("/auth/register", response_model=UserResponse, summary="Регистрация нового пользователя")
-async def register(user: UserCreate):
+async def register(request: Request, user: UserCreate):
+    client_ip = get_remote_address(request)
+    logger.info(f"📝 Попытка регистрации: username={user.username}, email={user.email}, ip={client_ip}")
+
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Проверка существующего пользователя
         existing = await conn.fetchrow(
             "SELECT id FROM users WHERE username = $1 OR email = $2",
             user.username, user.email
         )
         if existing:
+            logger.warning(f"❌ Регистрация отклонена: пользователь уже существует username={user.username}, ip={client_ip}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Пользователь с таким username или email уже существует"
             )
 
-        # Создание пользователя
         hashed_password = get_password_hash(user.password)
         user_id = await conn.fetchval(
             """
@@ -67,6 +92,8 @@ async def register(user: UserCreate):
             """,
             user.username, user.email, hashed_password
         )
+
+    logger.info(f"✅ Успешная регистрация: username={user.username}, user_id={user_id}, ip={client_ip}")
 
     return {
         "id": user_id,
@@ -78,15 +105,21 @@ async def register(user: UserCreate):
 
 
 @app.post("/auth/login", response_model=Token, summary="Получение JWT токена")
-async def login(username: str, password: str):
+@limiter.limit("5/minute")  # Rate limit: 5 попыток в минуту
+async def login(request: Request, credentials: LoginRequest):
+    client_ip = get_remote_address(request)
+    logger.info(f"🔑 Попытка входа: username={credentials.username}, ip={client_ip}")
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         user = await conn.fetchrow(
             "SELECT id, username, hashed_password, is_active FROM users WHERE username = $1",
-            username
+            credentials.username
         )
 
-        if not user or not verify_password(password, user['hashed_password']):
+        if not user or not verify_password(credentials.password, user['hashed_password']):
+            # ⚠️ ВАЖНО: НЕ логируем пароль!
+            logger.warning(f"❌ Неудачная попытка входа: username={credentials.username}, ip={client_ip} (неверные учётные данные)")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Неверный username или пароль",
@@ -94,13 +127,16 @@ async def login(username: str, password: str):
             )
 
         if not user['is_active']:
+            logger.warning(f"🚫 Попытка входа деактивированного пользователя: username={credentials.username}, ip={client_ip}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Пользователь деактивирован"
             )
 
         access_token = create_access_token(data={"sub": user['username']})
-    return {"access_token": access_token, "token_type": "bearer"}
+        logger.info(f"✅ Успешный вход: username={credentials.username}, ip={client_ip}")
+        return {"access_token": access_token, "token_type": "bearer"}
+    return None
 
 
 @app.get("/auth/me", response_model=UserResponse, summary="Получить информацию о текущем пользователе")
@@ -113,6 +149,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
+
 
 @app.get("/health", summary="Проверка работоспособности API")
 async def health_check(current_user: dict = Depends(get_current_user)):
@@ -129,12 +166,17 @@ async def health_check(current_user: dict = Depends(get_current_user)):
     summary="Загрузка CSV-файла с успеваемостью студентов (только для admin)"
 )
 async def upload_grades(
+        request: Request,
         file: UploadFile = File(...),
-        current_user: dict = Depends(require_role("admin"))  # Только admin!
+        current_user: dict = Depends(require_role("admin"))
 ):
+    client_ip = get_remote_address(request)
+    logger.info(f"📤 Начало загрузки файла: filename={file.filename}, user={current_user['username']}, ip={client_ip}")
+
     # Проверка размера файла
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
+        logger.warning(f"❌ Файл слишком большой: filename={file.filename}, size={len(content)} bytes, user={current_user['username']}, ip={client_ip}")
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"Файл слишком большой. Максимум: {MAX_FILE_SIZE // (1024 * 1024)} МБ"
@@ -142,9 +184,17 @@ async def upload_grades(
 
     # Проверка расширения
     if not file.filename.endswith(".csv"):
+        logger.warning(f"❌ Неподдерживаемый формат: filename={file.filename}, user={current_user['username']}, ip={client_ip}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Неподдерживаемый формат файла. Отправьте .csv"
+        )
+
+    if not re.match(r'^[\w\--. ]+\.csv$', file.filename, re.IGNORECASE):
+        logger.warning(f"❌ Недопустимое имя файла: filename={file.filename}, user={current_user['username']}, ip={client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Недопустимое имя файла"
         )
 
     text_content = content.decode("utf-8-sig")
@@ -157,6 +207,7 @@ async def upload_grades(
 
     if not req_columns.issubset(actual_columns):
         missing_columns = req_columns - actual_columns
+        logger.warning(f"❌ Отсутствуют колонки: missing={missing_columns}, user={current_user['username']}, ip={client_ip}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Отсутствуют колонки: {missing_columns}. Ожидаемые: {req_columns}"
@@ -199,6 +250,7 @@ async def upload_grades(
         })
 
     if not validated_data:
+        logger.warning(f"❌ Нет валидных данных в CSV: user={current_user['username']}, ip={client_ip}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Нет валидных данных для загрузки"
@@ -237,6 +289,8 @@ async def upload_grades(
                 unique_students.add(f"{data['full_name']}:{data['group_name']}")
                 student_id = await conn.fetchval(FIND_OR_CREATE_STUDENT, data['full_name'], data['group_name'])
                 await conn.execute(INSERT_GRADE, student_id, data['grade'])
+
+    logger.info(f"✅ Файл успешно загружен: records={len(validated_data)}, students={len(unique_students)}, skipped={len(skipped_rows)}, user={current_user['username']}, ip={client_ip}")
 
     response = {
         "status": "ok",

@@ -23,3 +23,5 @@ uploads/
 .DS_Store
 Thumbs.db
 EOF
+logs/
+*.log

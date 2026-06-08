@@ -238,8 +238,10 @@ function setupForms() {
         const password = document.getElementById('login-password').value;
 
         try {
-            const res = await fetch(`${API}/auth/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`, {
-                method: 'POST'
+            const res = await fetch( `${API}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': '/application/json'},
+                body: JSON.stringify({username, password})
             });
             if (!res.ok) {
                 const err = await res.json();

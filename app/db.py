@@ -38,9 +38,9 @@ async def ensure_admin() -> None:
     """Создаёт администратора, если его ещё нет."""
     from app.auth import get_password_hash
 
-    admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_email = os.getenv("ADMIN_EMAIL", "admin@grade-api.local")
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_email = os.getenv("ADMIN_EMAIL")
+    admin_password = os.getenv("ADMIN_PASSWORD")
 
     pool = await get_pool()
     async with pool.acquire() as conn:

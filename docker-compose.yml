@@ -10,6 +10,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./uploads:/app/uploads
+      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -19,11 +20,12 @@ services:
     image: postgres:15-alpine
     container_name: grade_db
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=$DB_NAME
-    ports:
-      - "5432:5432"
+        - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+        - UPLOAD_FOLDER=${UPLOAD_FOLDER}
+        - SECRET_KEY=${SECRET_KEY}
+        - ADMIN_USERNAME=${ADMIN_USERNAME}
+        - ADMIN_EMAIL=${ADMIN_EMAIL}
+        - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
