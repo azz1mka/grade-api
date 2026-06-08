@@ -114,6 +114,15 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 async def root():
     return FileResponse("static/index.html")
 
+@app.get("/health", summary="Проверка работоспособности API")
+async def health_check(current_user: dict = Depends(get_current_user)):
+    return {
+        "status": "ok",
+        "message": f"Service is running. Welcome, {current_user['username']}!",
+        "user": current_user['username'],
+        "role": current_user['role']
+    }
+
 
 @app.post(
     "/upload-grades",

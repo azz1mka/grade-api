@@ -51,9 +51,11 @@ async def test_get_students_with_auth(client, admin_token):
 @pytest.mark.asyncio
 async def test_run(client, admin_token):
     headers = {"Authorization": f"Bearer {admin_token}"}
-    response = await client.get("/", headers=headers)
+    response = await client.get("/health", headers=headers)  # ← Изменено с / на /health
     assert response.status_code == 200
-    assert "Service is running" in response.json()["message"]
+    data = response.json()
+    assert "Service is running" in data["message"]
+    assert data["status"] == "ok"
     print("test_run passed")
 
 
