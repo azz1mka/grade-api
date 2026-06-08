@@ -38,6 +38,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("🚀 Приложение запускается...")
+    from app.db import ensure_admin
+    await ensure_admin()
     yield
     logger.info("🛑 Приложение останавливается...")
     await close_pool()
