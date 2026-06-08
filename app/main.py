@@ -53,7 +53,7 @@ async def register(user: UserCreate):
                 detail="Пользователь с таким username или email уже существует"
             )
 
-        # Создание пользователя — ВСЕГДА role = 'user'
+        # Создание пользователя
         hashed_password = get_password_hash(user.password)
         user_id = await conn.fetchval(
             """
