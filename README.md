@@ -18,7 +18,7 @@ sudo usermod -aG docker $USER
 
 ## Установка
 Для установки можно воспользоваться одним из вариантов:
-### Вариант 1
+### Вариант 1 (не требует самостоятельной установки docker) 
 
 ```
 curl -sSL https://raw.githubusercontent.com/azz1mka/grade-api/main/install.sh | bash
